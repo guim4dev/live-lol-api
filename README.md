@@ -7,23 +7,29 @@ Python Script for watching live info from esports league of legends events
 Get schedule for the upcoming esports events:
 
 ```shell
-$ python runner.py -gse
+$ python api_reader.py -s
 ```
 
 Get current live events:
 
 ```shell
-$ python runner.py -gle
+$ python api_reader.py -l
 ```
 
 Get event games:
 
 ```shell
-$ python runner.py -geg [EVENT_ID]
+$ python api_reader.py -e [EVENT_ID]
 ```
 
 Watch a game through the API reader:
 
 ```shell
-$ python runner.py -wg [GAME_ID]
+$ python api_reader.py -g [GAME_ID]
+```
+
+To see the commands and explanation:
+
+```shell
+$ python api_reader.py -h
 ```

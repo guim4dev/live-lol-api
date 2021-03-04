@@ -164,10 +164,10 @@ def get_response(sufix, data={}):
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument("-gse", "--getscheduledevents", action="store_true", dest="get_scheduled_events", help="Get current scheduled esports events")
-  parser.add_argument("-gle", "--getliveevents", action="store_true", dest="get_live_events", help="Get current live esports events")
-  parser.add_argument("-geg", "--geteventgames", default="InvalidEventID", dest="get_event_games", help="Get event games given an event id")
-  parser.add_argument("-wg", "--watchgame", default="InvalidGameID", dest="watch_game", help="Get game info repeatedly given game id")
+  parser.add_argument("-s", "--scheduled", action="store_true", dest="get_scheduled_events", help="Get current scheduled esports events")
+  parser.add_argument("-l", "--live", action="store_true", dest="get_live_events", help="Get current live esports events")
+  parser.add_argument("-e", "--event", default="InvalidEventID", dest="get_event_games", help="Get event games given an event id")
+  parser.add_argument("-g", "--game", default="InvalidGameID", dest="watch_game", help="Get game info repeatedly given game id")
 
   args = parser.parse_args()
   args = args.__dict__
