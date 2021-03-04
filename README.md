@@ -1,6 +1,8 @@
 # Live League of Legends API reader
 
-Python Script for watching live info from esports league of legends events
+Python Script for watching live info from esports league of legends events.
+
+Based on this [API](https://vickz84259.github.io/lolesports-api-docs/)
 
 ## Usage:
 
