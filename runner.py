@@ -11,6 +11,7 @@ class colors:
   RED = '\033[91m'
   ENDC = '\033[0m'
   BOLD = '\033[1m'
+  WHITE = '\033[37m'
   UNDERLINE = '\033[4m'
 
 def print_to_stdout(*a):  
@@ -41,10 +42,16 @@ def get_event_games(event_id):
   response = get_response(sufix, extra_params)
   match_info = response["data"]["event"]["match"] 
   teams = match_info["teams"]
-  print_to_stdout(f"{teams[0]['name']} X {teams[1]['name']}")
-  games = match_info["games"]
-  print_to_stdout(games)
+  print_to_stdout(f"{colors.RED}{teams[0]['name']} X {teams[1]['name']}{colors.ENDC}")
+  print_event_games(match_info["games"])
   return 1
+
+def print_event_games(games):
+  for game in games:
+    game_color = colors.WHITE
+    if game['state'] == 'inProgress':
+      game_color = colors.GREEN
+    print_to_stdout(f"{game_color}game_number: {game['number']}, game_ID: {game['id']}, state: {game['state']}{colors.ENDC}")
 
 def watch_game(game_id):
   return 1
