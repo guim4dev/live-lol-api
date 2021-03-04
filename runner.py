@@ -1,4 +1,3 @@
-from colors import bcolors
 import requests
 import argparse
 import sys
