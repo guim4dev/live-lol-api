@@ -16,7 +16,7 @@ class colors:
   UNDERLINE = '\033[4m'
 
 def print_to_stdout(*a):  
-    print(*a, file = sys.stdout) 
+  print(*a, file = sys.stdout) 
 
 api_key_auth = "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z"
 riot_url = "https://esports-api.lolesports.com/persisted/gw"
@@ -25,7 +25,7 @@ base_params = { "hl": "pt-BR" }
 
 def get_live_events():
   sufix = "/getLive"
-  response = get_response(sufix)
+  response = get_response(sufix).json()
   events = response["data"]["schedule"]["events"]
   current_events = soon_events(events)
   print_live_events(current_events)
@@ -33,7 +33,7 @@ def get_live_events():
 
 def get_scheduled_events():
   sufix = "/getSchedule"
-  response = get_response(sufix)
+  response = get_response(sufix).json()
   events = response["data"]["schedule"]["events"]
   current_events = soon_events(events)
   print_live_events(current_events)
@@ -51,7 +51,7 @@ def print_live_events(events):
 def get_event_games(event_id):
   sufix = "/getEventDetails"
   extra_params = { "id": event_id }
-  response = get_response(sufix, extra_params)
+  response = get_response(sufix, extra_params).json()
   match_info = response["data"]["event"]["match"] 
   teams = match_info["teams"]
   print_to_stdout(f"{colors.RED}{teams[0]['name']} X {teams[1]['name']}{colors.ENDC}")
@@ -67,7 +67,7 @@ def print_event_games(games):
 
 def watch_game(game_id):
   sufix = f"/window/{game_id}"
-  response = get_response(sufix)
+  response = get_response(sufix, override_url='https://feed.lolesports.com/livestats/v1')
   not_started = True
   while not_started:
     if response.ok:
@@ -75,40 +75,33 @@ def watch_game(game_id):
     else:
       print_to_stdout("Game didnt start yet. trying again in a few seconds")
       sleep(10)
-      response = get_response(sufix)
+      response = get_response(sufix, override_url='https://feed.lolesports.com/livestats/v1')
 
-  patch_version = response["gameMetadata"]["patchVersion"]
-  blue_team_info = { "participants": get_team_participants(response['gameMetadata']["blueTeamMetadata"], patch_version),
+  response = response.json()
+  blue_team_info = { "participants": get_team_participants(response['gameMetadata']["blueTeamMetadata"]),
                      "team_name": get_team_name(response['gameMetadata']["blueTeamMetadata"])}
-  red_team_info = { "participants": get_team_participants(response['gameMetadata']["redTeamMetadata"], patch_version),
+  red_team_info = { "participants": get_team_participants(response['gameMetadata']["redTeamMetadata"]),
                     "team_name": get_team_name(response['gameMetadata']["redTeamMetadata"])}
-  teams = { "red": red_team_info, "blue": blue_team_info}
+  teams = { "red": red_team_info, "blue": blue_team_info }
 
   game_state = "in_game"
   while game_state != "finished":
     sleep(3)
     sys.stdout.flush()
-    game_info = get_game_info(game_id)
+    game_info = get_game_info(game_id)[-1]
     print_game_info(game_info, teams)
     game_state = game_info["gameState"]
   print_to_stdout(f"{colors.RED}GAME ENDED{colors.ENDC}")
   return 1
 
-def get_team_participants(teamData, patch_version):
+def get_team_participants(teamData):
   participants = teamData['participantMetadata']
   participants_dict = {}
   for participant in participants:
     participants_dict[participant['participantId']] = { "name": participant['summonerName'],
-                                                        "champion": get_champ_name(participant['championID'], patch_version),
+                                                        "champion": participant['championId'],
                                                         "role": participant['role'] }
   return participants_dict
-
-def get_champ_name(champ_id, patch_version):
-  response = requests.get(f"http://ddragon.leagueoflegends.com/cdn/{patch_version}/data/pt_BR/champion.json")
-  champion_list = response.json()['data']
-  for champion in champion_list:
-    if champ_id == champion['key']:
-      return champion['name']
 
 def get_team_name(teamData):
   team_id = teamData['esportsTeamId']
@@ -120,7 +113,7 @@ def get_team_name(teamData):
 
 def get_game_info(game_id):
   sufix = f"/window/{game_id}"
-  response = get_response(sufix)
+  response = get_response(sufix, override_url='https://feed.lolesports.com/livestats/v1')
   return response.json()['frames']
 
 def print_game_info(game_info, teams):
@@ -141,8 +134,8 @@ def print_participants_info(participants_info, team_participants):
   for participant in participants_info:
     for key in participant.keys():
       if key == 'participantId':
-        for extra_participant_info_keys in team_participants[participant['key']].keys():
-          print_to_stdout(f"  {extra_participant_info_keys}: {participant[extra_participant_info_keys]}")  
+        for extra_participant_info_key in team_participants[participant[key]].keys():
+          print_to_stdout(f"{extra_participant_info_key}: {team_participants[participant[key]][extra_participant_info_key]}")  
       else:
         print_to_stdout(f"    {key}: {participant[key]}")
 
@@ -154,31 +147,36 @@ def soon_events(events):
 
   return selected
 
-def get_response(sufix, data={}):
-  url = riot_url + sufix
+def get_response(sufix, data={}, override_url=None):
+  url = riot_url
   params = { **base_params, **data }
+
+  if override_url:
+    url = override_url
+    params = {}
+
+  url = url + sufix
   response = requests.get(url, headers=headers, params=params)
   if not response.ok:
     raise RuntimeError(f"Error when trying to request {url} with headers: {headers} and params: {params}")
-  return response.json()
+  return response
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument("-s", "--scheduled", action="store_true", dest="get_scheduled_events", help="Get current scheduled esports events")
   parser.add_argument("-l", "--live", action="store_true", dest="get_live_events", help="Get current live esports events")
-  parser.add_argument("-e", "--event", default="InvalidEventID", dest="get_event_games", help="Get event games given an event id")
-  parser.add_argument("-g", "--game", default="InvalidGameID", dest="watch_game", help="Get game info repeatedly given game id")
+  parser.add_argument("-e", "--event", default=None, dest="get_event_games", help="Get event games given an event id")
+  parser.add_argument("-g", "--game", default=None, dest="watch_game", help="Get game info repeatedly given game id")
 
   args = parser.parse_args()
-  args = args.__dict__
   retcode = 1
-  if args["get_live_events"]:
+  if (args.get_live_events):
     retcode = get_live_events()
-  elif args["get_scheduled_events"]:
+  elif (args.get_scheduled_events):
     retcode = get_scheduled_events()
-  elif args["get_event_games"]:
-    retcode = get_event_games(args["get_event_games"])
-  elif args["watch_game"]:
-    retcode = watch_game(args["watch_game"])
+  elif (args.get_event_games):
+    retcode = get_event_games(args.get_event_games)
+  elif (args.watch_game):
+    retcode = watch_game(args.watch_game)
   
   sys.exit(retcode)
