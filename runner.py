@@ -1,6 +1,7 @@
 import requests
 import argparse
 import sys
+from time import sleep
 
 class colors:
   HEADER = '\033[95m'
@@ -54,7 +55,69 @@ def print_event_games(games):
     print_to_stdout(f"{game_color}game_number: {game['number']}, game_ID: {game['id']}, state: {game['state']}{colors.ENDC}")
 
 def watch_game(game_id):
+  sufix = f"/window/{game_id}"
+  response = get_response(sufix)
+  not_started = True
+  while not_started:
+    if response.ok:
+      not_started = False
+    else:
+      print_to_stdout("Game didnt start yet. trying again in a few seconds")
+      sleep(10)
+      response = get_response(sufix)
+
+  patch_version = response["gameMetadata"]["patchVersion"]
+  blue_team_info = { "participants": get_team_participants(response['gameMetadata']["blueTeamMetadata"], patch_version),
+                     "team_name": get_team_name(response['gameMetadata']["blueTeamMetadata"])}
+  red_team_info = { "participants": get_team_participants(response['gameMetadata']["redTeamMetadata"], patch_version),
+                    "team_name": get_team_name(response['gameMetadata']["redTeamMetadata"])}
+  teams = { "red": red_team_info, "blue": blue_team_info}
+
+  game_info = {}
+  game_state = "in_game"
+  while game_state != "finished":
+    sleep(5)
+    sys.stdout.flush()
+    game_info = get_game_info(game_id)
+    print_game_info(game_info, teams)
+    game_state = game_info["gameState"]
+  print_to_stdout(f"{colors.RED}GAME ENDED{colors.ENDC}")
   return 1
+
+def get_team_participants(teamData, patch_version):
+  participants = teamData['participantMetadata']
+  participants_dict = {}
+  for participant in participants:
+    participants_dict[participant['participantId']] = { "name": participant['summonerName'],
+                                                        "champion": get_champ_name(participant['championID'], patch_version),
+                                                        "role": participant['role'] }
+  return participants_dict
+
+def get_champ_name(champ_id, patch_version):
+  response = requests.get(f"http://ddragon.leagueoflegends.com/cdn/{patch_version}/data/pt_BR/champion.json")
+  champion_list = response.json()['data']
+  for champion in champion_list:
+    if champ_id == champion['key']:
+      return champion['name']
+
+def get_team_name(teamData):
+  team_id = teamData['esportsTeamId']
+  sufix = "/getTeams"
+  params = { "id": team_id }
+  response = get_response(sufix, params)
+  team_info = response.json()["data"]["teams"][0]
+  return team_info["name"]
+
+def get_game_info(game_id):
+  sufix = f"/window/{game_id}"
+  response = get_response(sufix)
+  return response.json()['frames']
+
+def print_game_info(game_info, teams):
+  print_to_stdout(f"{colors.BLUE}{teams['blue']['team_name']}{colors.ENDC}")
+  print_team_info("blueTeam", teams['blue']['participants'])
+  print_to_stdout(f"{colors.RED}{teams['red']['team_name']}{colors.ENDC}")
+  print_team_info("redTeam", teams['red']['participants'])
 
 def only_in_progress(events):
   selected = []
@@ -76,7 +139,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument("-gle", "--getliveevents", action="store_true", dest="get_live_events", help="Get current live esports events")
   parser.add_argument("-geg", "--geteventgames", default="InvalidEventID", dest="get_event_games", help="Get event games given an event id")
-  parser.add_argument("-wg", "--watchgame", default="InvalidGameID", dest="watch_game", help="Get game info given game id")
+  parser.add_argument("-wg", "--watchgame", default="InvalidGameID", dest="watch_game", help="Get game info repeatedly given game id")
 
   args = parser.parse_args()
   args = args.__dict__
