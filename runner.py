@@ -27,15 +27,26 @@ def get_live_events():
   sufix = "/getLive"
   response = get_response(sufix)
   events = response["data"]["schedule"]["events"]
-  current_events = only_in_progress(events)
+  current_events = soon_events(events)
+  print_live_events(current_events)
+  return 1
+
+def get_scheduled_events():
+  sufix = "/getSchedule"
+  response = get_response(sufix)
+  events = response["data"]["schedule"]["events"]
+  current_events = soon_events(events)
   print_live_events(current_events)
   return 1
 
 def print_live_events(events):
   for event in events:
-    print_to_stdout(f"League: {event['league']['name']}")
+    print_to_stdout(f"\nLeague: {event['league']['name']}")
     print_to_stdout(f"{colors.RED}{event['match']['teams'][0]['name']} X {event['match']['teams'][1]['name']}{colors.ENDC}")
-    print_to_stdout(f"EventID: {colors.GREEN}{event['id']}{colors.ENDC}, state: {event['state']}")
+    if 'id' in event.keys():
+      print_to_stdout(f"EventID: {colors.GREEN}{event['id']}{colors.ENDC}, state: {event['state']}")
+    else:
+      print_to_stdout(f"startTime: {event['startTime']}, state: {event['state']}")
 
 def get_event_games(event_id):
   sufix = "/getEventDetails"
@@ -124,21 +135,22 @@ def print_team_info(team_info, team_participants):
     if key == 'participants':
       print_participants_info(team_info['participants'], team_participants)
     else:
-      print_to_stdout(f"{key}: {team_info[key]}")
+      print_to_stdout(f"  {key}: {team_info[key]}")
+      print_to_stdout(f"  {colors.YELLOW}========================================================={colors.ENDC}")
 
 def print_participants_info(participants_info, team_participants):
   for participant in participants_info:
     for key in participant.keys():
       if key == 'participantId':
         for extra_participant_info_keys in team_participants[participant['key']].keys():
-          print_to_stdout(f"{extra_participant_info_keys}: {participant[extra_participant_info_keys]}")  
+          print_to_stdout(f"  {extra_participant_info_keys}: {participant[extra_participant_info_keys]}")  
       else:
-        print_to_stdout(f"{key}: {participant[key]}")
+        print_to_stdout(f"    {key}: {participant[key]}")
 
-def only_in_progress(events):
+def soon_events(events):
   selected = []
   for event in events:
-    if (event["state"] == "inProgress"):
+    if (event['state'] != 'completed' and event['type'] == 'match'):
       selected += [event]
 
   return selected
@@ -153,6 +165,7 @@ def get_response(sufix, data={}):
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
+  parser.add_argument("-gse", "--getscheduledevents", action="store_true", dest="get_scheduled_events", help="Get current scheduled esports events")
   parser.add_argument("-gle", "--getliveevents", action="store_true", dest="get_live_events", help="Get current live esports events")
   parser.add_argument("-geg", "--geteventgames", default="InvalidEventID", dest="get_event_games", help="Get event games given an event id")
   parser.add_argument("-wg", "--watchgame", default="InvalidGameID", dest="watch_game", help="Get game info repeatedly given game id")
@@ -162,6 +175,8 @@ if __name__ == '__main__':
   retcode = 1
   if args["get_live_events"]:
     retcode = get_live_events()
+  if args["get_scheduled_events"]:
+    retcode = get_scheduled_events()
   elif args["get_event_games"]:
     retcode = get_event_games(args["get_event_games"])
   elif args["watch_game"]:
