@@ -115,9 +115,25 @@ def get_game_info(game_id):
 
 def print_game_info(game_info, teams):
   print_to_stdout(f"{colors.BLUE}{teams['blue']['team_name']}{colors.ENDC}")
-  print_team_info("blueTeam", teams['blue']['participants'])
+  print_team_info(game_info["blueTeam"], teams['blue']['participants'])
   print_to_stdout(f"{colors.RED}{teams['red']['team_name']}{colors.ENDC}")
-  print_team_info("redTeam", teams['red']['participants'])
+  print_team_info(game_info["redTeam"], teams['red']['participants'])
+
+def print_team_info(team_info, team_participants):
+  for key in team_info.keys():
+    if key == 'participants':
+      print_participants_info(team_info['participants'], team_participants)
+    else:
+      print_to_stdout(f"{key}: {team_info[key]}")
+
+def print_participants_info(participants_info, team_participants):
+  for participant in participants_info:
+    for key in participant.keys():
+      if key == 'participantId':
+        for extra_participant_info_keys in team_participants[participant['key']].keys():
+          print_to_stdout(f"{extra_participant_info_keys}: {participant[extra_participant_info_keys]}")  
+      else:
+        print_to_stdout(f"{key}: {participant[key]}")
 
 def only_in_progress(events):
   selected = []
