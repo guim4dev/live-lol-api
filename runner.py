@@ -84,10 +84,9 @@ def watch_game(game_id):
                     "team_name": get_team_name(response['gameMetadata']["redTeamMetadata"])}
   teams = { "red": red_team_info, "blue": blue_team_info}
 
-  game_info = {}
   game_state = "in_game"
   while game_state != "finished":
-    sleep(5)
+    sleep(3)
     sys.stdout.flush()
     game_info = get_game_info(game_id)
     print_game_info(game_info, teams)
