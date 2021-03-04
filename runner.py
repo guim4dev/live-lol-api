@@ -174,7 +174,7 @@ if __name__ == '__main__':
   retcode = 1
   if args["get_live_events"]:
     retcode = get_live_events()
-  if args["get_scheduled_events"]:
+  elif args["get_scheduled_events"]:
     retcode = get_scheduled_events()
   elif args["get_event_games"]:
     retcode = get_event_games(args["get_event_games"])
